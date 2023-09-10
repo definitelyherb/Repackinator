@@ -21,7 +21,17 @@ namespace Repackinator.Actions
 
         private ProgressInfo CurrentProgress = new ProgressInfo();
 
+        public Repacker(GameData[]? gameData, Config config, Action<ProgressInfo>? progress, Action<LogMessage> logger)
+        {
+            GameDataList = gameData;
+            Config = config;
+            Progress = progress;
+            Logger = logger;
+        }
+
         private GameData[]? GameDataList { get; set; }
+
+        private Config Config { get; set; }
 
         private void SendProgress()
         {
@@ -43,7 +53,7 @@ namespace Repackinator.Actions
             File.AppendAllText("RepackLog.txt", logMessage.ToLogFormat());
         }
 
-        private int ProcessFile(string inputFile, string outputPath, GroupingEnum grouping, bool hasAllCrcs, bool upperCase, CompressEnum compressType, bool trimmedScrub, bool noSplit, CancellationToken cancellationToken)
+        private int ProcessFile(string inputFile, bool hasAllCrcs, CancellationToken cancellationToken)
         {
             try
             {
@@ -58,10 +68,10 @@ namespace Repackinator.Actions
                 var extension = Path.GetExtension(inputFile).ToLower();
                 if (extension.Equals(".iso") || extension.Equals(".cso") || extension.Equals(".cci"))
                 {
-                    return ProcessIso(inputFile, outputPath, grouping, upperCase, compressType, trimmedScrub, noSplit, cancellationToken);
+                    return ProcessIso(inputFile, cancellationToken);
                 }
 
-                return ProcessArchive(inputFile, outputPath, grouping, hasAllCrcs, upperCase, compressType, trimmedScrub, noSplit, cancellationToken);
+                return ProcessArchive(inputFile, hasAllCrcs, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -70,8 +80,16 @@ namespace Repackinator.Actions
             }
         }
 
-        public int ProcessArchive(string inputFile, string outputPath, GroupingEnum grouping, bool hasAllCrcs, bool upperCase, CompressEnum compressType, bool trimmedScrub, bool noSplit, CancellationToken cancellationToken)
+        public int ProcessArchive(string inputFile, bool hasAllCrcs, CancellationToken cancellationToken)
         {
+            string outputPath = Config.OutputPath;
+            GroupingEnum grouping = Config.Grouping;
+            bool upperCase = Config.UpperCase;
+            CompressEnum compressType = Config.CompressType;
+            bool trimmedScrub = Config.TrimmedScrub;
+            bool deleteOriginal = Config.DeleteOriginal;
+            bool noSplit = Config.NoSplit;
+
             if (GameDataList == null)
             {
                 Log(LogMessageLevel.Error, "GameData should not be null.");
@@ -453,6 +471,12 @@ namespace Repackinator.Actions
 
                 processStopwatch.Stop();
                 Log(LogMessageLevel.Completed, $"Completed Processing '{Path.GetFileName(inputFile)}' (Time Taken {processStopwatch.Elapsed.TotalHours:00}:{processStopwatch.Elapsed.Minutes:00}:{processStopwatch.Elapsed.Seconds:00}).");
+
+                if (deleteOriginal)
+                {
+                    DeleteFile(inputFile);
+                }
+
                 return gameIndex;
             }
             catch (Exception ex)
@@ -478,8 +502,16 @@ namespace Repackinator.Actions
             }
         }
 
-        public int ProcessIso(string inputFile, string outputPath, GroupingEnum grouping, bool upperCase, CompressEnum compressType, bool trimmedScrub, bool noSplit, CancellationToken cancellationToken)
+        public int ProcessIso(string inputFile, CancellationToken cancellationToken)
         {
+            string outputPath = Config.OutputPath;
+            GroupingEnum grouping = Config.Grouping;
+            bool upperCase = Config.UpperCase;
+            CompressEnum compressType = Config.CompressType;
+            bool trimmedScrub = Config.TrimmedScrub;
+            bool deleteOriginal = Config.DeleteOriginal;
+            bool noSplit = Config.NoSplit;
+
             if (GameDataList == null)
             {
                 Log(LogMessageLevel.Error, "GameData should not be null.");
@@ -746,6 +778,12 @@ namespace Repackinator.Actions
 
                 processStopwatch.Stop();
                 Log(LogMessageLevel.Completed, $"Completed Processing '{Path.GetFileName(inputFile)}' (Time Taken {processStopwatch.Elapsed.TotalHours:00}:{processStopwatch.Elapsed.Minutes:00}:{processStopwatch.Elapsed.Seconds:00}).");
+
+                if (Config.DeleteOriginal)
+                {
+                    DeleteFile(inputFile);
+                }
+
                 return gameIndex;
             }
             catch (Exception ex)
@@ -797,20 +835,15 @@ namespace Repackinator.Actions
             return downloader.Status == DownloadStatus.Completed;
         }
 
-        public void StartRepacking(GameData[]? gameData, Config config, Action<ProgressInfo>? progress, Action<LogMessage> logger, Stopwatch stopwatch, CancellationToken cancellationToken)
+        public void StartRepacking(Stopwatch stopwatch, CancellationToken cancellationToken)
         {
             try
             {
-                Logger = logger;
-                Progress = progress;
-
-                if (gameData == null)
+                if (GameDataList == null)
                 {
                     Log(LogMessageLevel.Error, "RepackList.json not found.");
                     return;
                 }
-
-                GameDataList = gameData;
 
                 int crcMissingCount = 0;
                 foreach (var gameDataItem in GameDataList)
@@ -840,7 +873,7 @@ namespace Repackinator.Actions
                 CurrentProgress.Progress2Text = string.Empty;
                 SendProgress();
 
-                if (config.LeechType > 0)
+                if (Config.LeechType > 0)
                 {
                     var count = 0;
                     var leechlistCount = GameDataList.Where(l => l.Process.Equals("Y", StringComparison.CurrentCultureIgnoreCase)).Count();
@@ -863,9 +896,9 @@ namespace Repackinator.Actions
                         }
 
                         var tempPath = Path.Combine(Path.GetTempPath(), $"RepackinatorDownload{Path.GetExtension(decodedLink)}");
-                        if (config.LeechType > 1)
+                        if (Config.LeechType > 1)
                         {
-                            tempPath = Path.Combine(config.InputPath, $"{gameDataItem.ISOName}{Path.GetExtension(decodedLink)}");
+                            tempPath = Path.Combine(Config.InputPath, $"{gameDataItem.ISOName}{Path.GetExtension(decodedLink)}");
                         }
 
                         if (File.Exists(tempPath))
@@ -903,18 +936,18 @@ namespace Repackinator.Actions
                                     continue;
                                 }
 
-                                if (config.LeechType == 3)
+                                if (Config.LeechType == 3)
                                 {
                                     gameDataItem.Process = "N";
-                                    GameDataHelper.SaveGameData(gameData);
+                                    GameDataHelper.SaveGameData(GameDataList);
                                     continue;
                                 }
 
-                                var gameIndex = ProcessFile(tempPath, config.OutputPath, config.Grouping, crcMissingCount == 0, config.UpperCase, config.CompressType, config.TrimmedScrub, config.NoSplit, cancellationToken);
+                                var gameIndex = ProcessFile(tempPath, crcMissingCount == 0, cancellationToken);
                                 if (gameIndex >= 0)
                                 {
-                                    gameData[gameIndex].Process = "N";
-                                    GameDataHelper.SaveGameData(gameData);
+                                    GameDataList[gameIndex].Process = "N";
+                                    GameDataHelper.SaveGameData(GameDataList);
                                 }
                             }
                             else
@@ -928,7 +961,7 @@ namespace Repackinator.Actions
                         }
                         finally
                         {
-                            if (config.LeechType == 1 && File.Exists(tempPath))
+                            if (Config.LeechType == 1 && File.Exists(tempPath))
                             {
                                 File.Delete(tempPath);                                
                             }
@@ -947,7 +980,7 @@ namespace Repackinator.Actions
                 else
                 {
                     var acceptedFiletypes = new string[] { ".iso", ".cso", ".cci", ".zip", ".rar", ".7z" };
-                    var tempFiles = Directory.GetFileSystemEntries(config.InputPath, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = config.RecurseInput, MatchCasing = MatchCasing.CaseInsensitive })
+                    var tempFiles = Directory.GetFileSystemEntries(Config.InputPath, "*", new EnumerationOptions { IgnoreInaccessible = true, RecurseSubdirectories = Config.RecurseInput, MatchCasing = MatchCasing.CaseInsensitive })
                         .Where(file => acceptedFiletypes.Contains(Path.GetExtension(file), StringComparer.CurrentCultureIgnoreCase))
                         .ToList();
 
@@ -970,11 +1003,11 @@ namespace Repackinator.Actions
                         CurrentProgress.Progress1Text = $"Processing {i + 1} of {files.Count}";
                         SendProgress();
 
-                        var gameIndex = ProcessFile(file, config.OutputPath, config.Grouping, crcMissingCount == 0, config.UpperCase, config.CompressType, config.TrimmedScrub, config.NoSplit, cancellationToken);
+                        var gameIndex = ProcessFile(file, crcMissingCount == 0, cancellationToken);
                         if (gameIndex >= 0)
                         {
-                            gameData[gameIndex].Process = "N";
-                            GameDataHelper.SaveGameData(gameData);
+                            GameDataList[gameIndex].Process = "N";
+                            GameDataHelper.SaveGameData(GameDataList);
                         }
 
                         if (cancellationToken.IsCancellationRequested)
@@ -999,6 +1032,35 @@ namespace Repackinator.Actions
             {
                 Log(LogMessageLevel.Error, $"Exception occured '{ex}'.");
             }
+        }
+
+        private void DeleteFile(string path)
+        {
+            try
+            {
+                Log(LogMessageLevel.Info, $"Deleting file {path}");
+                File.Delete(path);
+                if (Config.RecurseInput && Config.RecursiveDelete)
+                {
+                    var currentDir = Directory.GetParent(path);
+                    var endDir = Directory.GetParent(Config.InputPath);
+                    while (currentDir != null && endDir != null && currentDir.Exists && endDir.Exists && !currentDir.GetFiles().Any() && !ArePathsEqual(currentDir.FullName, endDir.FullName))
+                    {
+                        Log(LogMessageLevel.Info, $"Deleting directory {currentDir.FullName}");
+                        Directory.Delete(currentDir.FullName);
+                        currentDir = currentDir.Parent;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(LogMessageLevel.Error, $"Exception occured deleting file {path} '{ex}'.");
+            }
+        }
+
+        private bool ArePathsEqual(string path1, string path2)
+        {
+            return string.Equals(Path.GetFullPath(path1).TrimEnd(Path.DirectorySeparatorChar), Path.GetFullPath(path2).TrimEnd(Path.DirectorySeparatorChar), StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }

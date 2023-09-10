@@ -56,8 +56,8 @@ namespace Repackinator.UI
 
             _cancellationTokenSource = new CancellationTokenSource();
 
-            var repacker = new Repacker();
-            repacker.StartRepacking(_gameData, _config, progress, logger, _stopwatch, _cancellationTokenSource.Token);
+            var repacker = new Repacker(_gameData, _config, progress, logger);
+            repacker.StartRepacking(_stopwatch, _cancellationTokenSource.Token);
 
             _completed = true;
         }

@@ -37,6 +37,8 @@ namespace Repackinator.Models
         public bool NoSplit { get; set; }
 
         public bool TrimmedScrub { get; set; }
+        public bool DeleteOriginal { get; set; }
+        public bool RecursiveDelete { get; set; } = true;
 
         [JsonIgnore]
         public int LeechType { get; set; }
@@ -58,6 +60,7 @@ namespace Repackinator.Models
             NoSplit = false;
             LeechType = 0;
             TrimmedScrub = false;
+            DeleteOriginal = false;
             SearchField = 0;
             CompareFirst = string.Empty;
             CompareSecond = string.Empty;

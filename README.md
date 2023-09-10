@@ -81,6 +81,8 @@ Also included, is the ability to easily update legacy Attacher (default.xbe) cre
 * **Compress**: will add .cci compression to the output. *Note: .cci is currently only supported while using Cerbios.* 
 * **Trim Scrub**: will remove all unused data at the end of data partition. *Similar to XISO*  
 * **Traverse Input Subdir's**: will look for files to process inside any additional directories within your selected input folder.
+* **Delete Original**: will delete original file after successful processing.
+* **Recursive Delete**: (Use at own risk) if Traverse Input Subdir's is also selected, and no other files exist in each folder, will delete up to and including the input folder
 
 ## Command Line Use
 * *Windows Only* ***Must run `Repackinator.exe -a=register` as admin to enable context menu use. Use `Repackinator.exe -a=unregister` as admin to remove context menu.***
@@ -95,6 +97,8 @@ Also included, is the ability to easily update legacy Attacher (default.xbe) cre
   -r, --recurse              Recurse (Traverse Sub Dirs)
   -c, --compress             Compress (As .CCI)
   -t, --trimmedScrub         Trimmed Scrub
+  -d, --delete               Delete Original File
+  -f, --recursiveDelete      (Use at own risk) If Recurse/Traverse Sub Dirs is also enabled, and no other files exist in each folder, will delete up to and including the input folder
   -l, --log=VALUE            log file
   -h, --help                 show this message and exit
   -w, --wait                 Wait on exit

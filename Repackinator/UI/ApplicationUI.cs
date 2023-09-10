@@ -789,6 +789,35 @@ namespace Repackinator.UI
 
             ImGui.Spacing();
 
+            ImGui.Text("Delete Original:");
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(150);
+            bool deleteOriginal = m_config.DeleteOriginal;
+            if (Toggle("##deleteOriginal", ref deleteOriginal, new Vector2(38, 24)))
+            {
+                m_config.DeleteOriginal = deleteOriginal;
+                Config.SaveConfig(m_config);
+            }
+            ImGui.SameLine();
+            ImGui.Text("Deletes original file after successful processing");
+
+            if (m_config.DeleteOriginal && m_config.RecurseInput)
+            {
+                ImGui.SameLine();
+                ImGui.Text("Recursive delete:");
+                ImGui.SameLine();
+                bool recursiveDelete = m_config.RecursiveDelete;
+                if (Toggle("##recursiveDelete", ref recursiveDelete, new Vector2(38, 24)))
+                {
+                    m_config.RecursiveDelete = recursiveDelete;
+                    Config.SaveConfig(m_config);
+                }
+                ImGui.SameLine();
+                ImGui.Text("(Use at own risk) Recursively delete empty folders up to and including the input folder");
+            }
+
+            ImGui.Spacing();
+
             ImGui.Text("Traverse Input Subdir's:");
             ImGui.SameLine();
             ImGui.SetCursorPosX(150);
